@@ -19,6 +19,7 @@ public class PaymentServiceImpl implements PaymentService {
     public static final String PAYMENT_ID_HEADER = "payment_id";
     private final PaymentRepository paymentRepository;
     private final StateMachineFactory<PaymentState, PaymentEvent> stateMachineFactory;
+    private final PaymentStateChangeInterceptor paymentStateChangeInterceptor;
 
     @Override
     public Payment createNewPayment(Payment payment) {
@@ -27,26 +28,26 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public StateMachine<PaymentState, PaymentService> authorize(Long paymentId) {
+    public StateMachine<PaymentState, PaymentEvent> authorize(Long paymentId) {
         StateMachine<PaymentState, PaymentEvent> sm = build(paymentId);
         sendEvent(paymentId, sm, PaymentEvent.PRE_AUTHORIZE);
-        return null;
+        return sm;
     }
 
     @Override
-    public StateMachine<PaymentState, PaymentService> authorizePayment(Long paymentId) {
+    public StateMachine<PaymentState, PaymentEvent> authorizePayment(Long paymentId) {
         StateMachine<PaymentState, PaymentEvent> sm = build(paymentId);
         sendEvent(paymentId, sm, PaymentEvent.AUTH_APPROVED);
 
-        return null;
+        return sm;
     }
 
     @Override
-    public StateMachine<PaymentState, PaymentService> declineAuth(Long paymentId) {
+    public StateMachine<PaymentState, PaymentEvent> declineAuth(Long paymentId) {
         StateMachine<PaymentState, PaymentEvent> sm = build(paymentId);
         sendEvent(paymentId, sm, PaymentEvent.AUTH_DECLINED);
 
-        return null;
+        return sm;
     }
 
     private void sendEvent(Long paymentId, StateMachine<PaymentState, PaymentEvent> sm, PaymentEvent event) {
@@ -65,8 +66,12 @@ public class PaymentServiceImpl implements PaymentService {
         sm.stop();
 
         sm.getStateMachineAccessor()
-                .doWithAllRegions(sma -> sma.resetStateMachine(new DefaultStateMachineContext<>(payment.getState(),
-                        null, null, null)));
+                .doWithAllRegions(sma -> {
+                            sma.addStateMachineInterceptor(paymentStateChangeInterceptor);
+                            sma.resetStateMachine(new DefaultStateMachineContext<>(payment.getState(),
+                                    null, null, null));
+                        }
+                );
 
         sm.start();
 
