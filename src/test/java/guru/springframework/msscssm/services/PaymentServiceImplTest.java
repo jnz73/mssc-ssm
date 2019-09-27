@@ -3,7 +3,7 @@ package guru.springframework.msscssm.services;
 import guru.springframework.msscssm.domain.Payment;
 import guru.springframework.msscssm.repository.PaymentRepository;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.RepeatedTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,7 +26,7 @@ class PaymentServiceImplTest {
     }
 
     @Transactional
-    @Test
+    @RepeatedTest(10)
     void authorize() {
         Payment savedPayment = paymentService.createNewPayment(payment);
         paymentService.preAuth(savedPayment.getId());
